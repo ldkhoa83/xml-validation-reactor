@@ -3,8 +3,12 @@ package com.krock.xmlapp.controller;
 import com.krock.xmlapp.model.SimpleXmlRequest;
 import com.krock.xmlapp.sax.CustomErrorHandlerSax;
 import com.krock.xmlapp.sax.MapSimpleRequestSaxHandler;
+import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.oxm.jaxb.Jaxb2Marshaller;
 import org.springframework.util.ResourceUtils;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
@@ -13,7 +17,6 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.ParserConfigurationException;
@@ -32,30 +35,45 @@ import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
 @Configuration
+@RequiredArgsConstructor
 public class SimpleController {
 
-/*
---Correct payload
-    <?xml version="1.0" encoding="UTF-8"?>
-    <SimpleXmlRequest>
-        <name>KhoaLe</name>
-        <bio>2</bio>
-    </SimpleXmlRequest>
---Wrong payload
-    <?xml version="1.0" encoding="UTF-8"?>
-    <SimpleXmlRequest>
-        <name>KhoaLe</name>
-        <bio>ABC</bio>
-    </SimpleXmlRequest>
-*/
+
+    /*
+    --Correct payload
+        <?xml version="1.0" encoding="UTF-8"?>
+        <SimpleXmlRequest xmlns="mySchema">
+            <name>KhoaLe</name>
+            <bio>2</bio>
+            <gender>male</gender>
+        </SimpleXmlRequest>
+    --Wrong payload
+        <?xml version="1.0" encoding="UTF-8"?>
+        <SimpleXmlRequest xmlns="mySchema">
+            <name>KhoaLe</name>
+            <bio>ABC</bio>
+            <gender>male</gender>
+        </SimpleXmlRequest>
+    */
     @Bean
-    RouterFunction<ServerResponse> handleXmlWithSax() {
-        return RouterFunctions.route().POST("/transactions",
+    RouterFunction<ServerResponse> handleXmlWithJAXBV1(Jaxb2Marshaller jaxb2Marshaller) {
+        return RouterFunctions.route().POST("/v1/persons",
 //                request -> request.headers().contentType().map(mediaType -> mediaType.includes(MediaType.APPLICATION_XML)).orElse(false),
                 request -> {
-                    Mono<String> r = request.bodyToMono(String.class).publishOn(Schedulers.boundedElastic())
-                            .doOnNext(validateXml)
-                            .doOnNext(bindingXml);
+                    Mono<String> r = request.bodyToMono(String.class)
+                            .map(s -> bindingWithAutoValidation(jaxb2Marshaller, s, SimpleXmlRequest.class))
+                            .map(Object::toString);
+                    return ServerResponse.ok().body(r, String.class);
+                }).build();
+    }
+
+    @Bean
+    RouterFunction<ServerResponse> handleXmlWithJAXBV2(Jaxb2Marshaller jaxb2Marshaller) {
+        return RouterFunctions.route().POST("/v2/persons",
+                request -> {
+                    Mono<String> r = request.bodyToMono(String.class)
+                            .map(s -> bindingWithAutoValidation(jaxb2Marshaller, s, com.krock.xmlapp.model.v2.SimpleXmlRequest.class))
+                            .map(Object::toString);
                     return ServerResponse.ok().body(r, String.class);
                 }).build();
     }
@@ -107,4 +125,23 @@ public class SimpleController {
             throw new RuntimeException(e);
         }
     };
+
+    private <T> T bindingWithAutoValidation(Jaxb2Marshaller jaxb2Marshaller, String xmlString, Class<T> declaredType) {
+        try (InputStream is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8))) {
+            StreamSource streamSource = new StreamSource(is);
+            return jaxb2Marshaller.createUnmarshaller().unmarshal(streamSource, declaredType).getValue();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Bean
+    @SneakyThrows
+    public Jaxb2Marshaller jaxb2Marshaller() {
+        Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
+        marshaller.setSchemas(new PathMatchingResourcePatternResolver().getResources("/xsd/*"));
+        marshaller.setPackagesToScan("com.krock.xmlapp.model");
+        return marshaller;
+    }
+
 }

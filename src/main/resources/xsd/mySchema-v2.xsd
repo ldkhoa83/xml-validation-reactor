@@ -1,0 +1,11 @@
+<xs:schema attributeFormDefault="unqualified" targetNamespace="mySchema-v2" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="SimpleXmlRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element type="xs:string" name="name"/>
+                <xs:element type="xs:byte" name="age"/>
+                <xs:element type="xs:string" name="gender"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>

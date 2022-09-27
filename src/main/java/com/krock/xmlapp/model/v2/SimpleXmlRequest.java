@@ -1,4 +1,4 @@
-package com.krock.xmlapp.model;
+package com.krock.xmlapp.model.v2;
 
 import lombok.*;
 
@@ -12,13 +12,14 @@ import javax.xml.bind.annotation.*;
 @Getter
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlRootElement(name = "SimpleXmlRequest")
+@XmlType(name = "SimpleXmlRequest", namespace = "mySchema-v2")
 public class SimpleXmlRequest {
 
-    @XmlElement(namespace = "mySchema")
+    @XmlElement(namespace = "mySchema-v2")
     private String name;
-    @XmlElement(namespace = "mySchema")
-    private String bio;
+    @XmlElement(namespace = "mySchema-v2")
+    private Integer age;
 
-    @XmlElement(namespace = "mySchema")
+    @XmlElement(namespace = "mySchema-v2")
     private String gender;
 }
