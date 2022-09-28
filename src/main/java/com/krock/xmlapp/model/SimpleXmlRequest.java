@@ -11,14 +11,12 @@ import javax.xml.bind.annotation.*;
 @Setter
 @Getter
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "SimpleXmlRequest")
+@XmlRootElement(name = "SimpleXmlRequest", namespace = "mySchema")
 public class SimpleXmlRequest {
 
     @XmlElement(namespace = "mySchema")
-    private String name;
-    @XmlElement(namespace = "mySchema")
-    private String bio;
+    private Person person;
 
-    @XmlElement(namespace = "mySchema")
-    private String gender;
+    @XmlElement(namespace = "mySchema", name = "RejectResponse")
+    private RejectResponse rejectResponse;
 }

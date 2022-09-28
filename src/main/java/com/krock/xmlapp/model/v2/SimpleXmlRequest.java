@@ -11,7 +11,7 @@ import javax.xml.bind.annotation.*;
 @Setter
 @Getter
 @XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "SimpleXmlRequest")
+@XmlRootElement(name = "SimpleXmlRequest", namespace = "mySchema-v2")
 @XmlType(name = "SimpleXmlRequest", namespace = "mySchema-v2")
 public class SimpleXmlRequest {
 
