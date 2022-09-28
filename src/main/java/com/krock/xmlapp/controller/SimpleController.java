@@ -1,6 +1,7 @@
 package com.krock.xmlapp.controller;
 
 import com.krock.xmlapp.exception.GlobalException;
+import com.krock.xmlapp.jaxb.XmlMapper;
 import com.krock.xmlapp.model.RejectResponse;
 import com.krock.xmlapp.model.ResponseGroup;
 import com.krock.xmlapp.model.SimpleXmlRequest;
@@ -73,19 +74,19 @@ public class SimpleController {
         </SimpleXmlRequest>
     */
     @Bean
-    RouterFunction<ServerResponse> handleXmlWithJAXBV1(Jaxb2Marshaller jaxb2Marshaller) {
+    RouterFunction<ServerResponse> handleXmlWithJAXBV1(XmlMapper<SimpleXmlRequest> xmlMapper) {
         return RouterFunctions.route().POST("/v1/persons",
                         request -> request.bodyToMono(String.class)
                                 .map(s -> {
                                     try {
-                                        return bindingWithAutoValidation(jaxb2Marshaller, s, SimpleXmlRequest.class);
+                                        return xmlMapper.bindingWithAutoValidation(s, SimpleXmlRequest.class);
                                     } catch (JAXBException e) {
                                         throw Exceptions.propagate(e);
                                     }
                                 })
                                 .map(m -> {
                                     try {
-                                        return toXml(jaxb2Marshaller, m);
+                                        return xmlMapper.toXml(m);
                                     } catch (JAXBException e) {
                                         throw Exceptions.propagate(e);
                                     }
@@ -97,7 +98,7 @@ public class SimpleController {
                                     sxr.setRejectResponse(rejectResponse);
                                     try {
                                         log.error(e.getMessage(),e);
-                                        return Mono.error(new GlobalException(HttpStatus.BAD_REQUEST.value(), toXml(jaxb2Marshaller, sxr), e));
+                                        return Mono.error(new GlobalException(HttpStatus.BAD_REQUEST.value(), xmlMapper.toXml(sxr), e));
                                     } catch (JAXBException ex) {
                                         log.error(ex.getMessage(),ex);
                                         throw Exceptions.propagate(ex);
@@ -122,13 +123,13 @@ public class SimpleController {
     }
 
     @Bean
-    RouterFunction<ServerResponse> handleXmlWithJAXBV2(Jaxb2Marshaller jaxb2Marshaller) {
+    RouterFunction<ServerResponse> handleXmlWithJAXBV2(XmlMapper<com.krock.xmlapp.model.v2.SimpleXmlRequest> xmlMapper) {
         return RouterFunctions.route().POST("/v2/persons",
                 request -> {
                     Mono<String> r = request.bodyToMono(String.class)
                             .map(s -> {
                                 try {
-                                    return bindingWithAutoValidation(jaxb2Marshaller, s, com.krock.xmlapp.model.v2.SimpleXmlRequest.class);
+                                    return xmlMapper.bindingWithAutoValidation(s, com.krock.xmlapp.model.v2.SimpleXmlRequest.class);
                                 } catch (JAXBException e) {
                                     throw Exceptions.propagate(e);
                                 }
@@ -138,22 +139,7 @@ public class SimpleController {
                 }).build();
     }
 
-    private <T> T bindingWithAutoValidation(Jaxb2Marshaller jaxb2Marshaller, String xmlString, Class<T> declaredType) throws JAXBException {
-        try (InputStream is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8))) {
-            StreamSource streamSource = new StreamSource(is);
-            return jaxb2Marshaller.createUnmarshaller().unmarshal(streamSource, declaredType).getValue();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
-    private String toXml(Jaxb2Marshaller jaxb2Marshaller, Object model) throws JAXBException {
-        StringWriter writer = new StringWriter();
-        Marshaller marshaller = jaxb2Marshaller.createMarshaller();
-        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
-        marshaller.marshal(model, writer);
-        return writer.toString();
-    }
 
     @Bean
     @SneakyThrows
